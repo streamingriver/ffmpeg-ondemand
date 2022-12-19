@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"log"
 	"net/http"
 	"os"
@@ -14,39 +13,45 @@ import (
 
 var (
 	ffmpeg = &FFmpeg{}
-
-	flagURL  = flag.String("url", "", "URL to stream")
-	flagPath = flag.String("path", "", "Path to ts files")
-	flagBind = flag.String("bind", ":9999", "Bind address")
 )
+
+func getFullPath() string {
+	return os.Getenv("APP_ROOT") + "/" + os.Getenv("APP_NAME")
+}
 
 func resetFFMPEG() {
 	input := `-xerror -nostats -nostdin -i {url} -codec copy -map 0:0 -map 0:1 -map_metadata 0 -hls_flags delete_segments -hls_time 10 -segment_list_size 6 -hls_segment_filename file%07d.ts stream.m3u8`
-	input = strings.ReplaceAll(input, "{url}", *flagURL)
+	input = strings.ReplaceAll(input, "{url}", os.Args[1])
 	argz := strings.Split(input, " ")
-	ffmpeg = New(argz, *flagPath)
+	ffmpeg = New(argz, getFullPath())
 }
 
 func main() {
-	flag.Parse()
-
-	if *flagURL == "" {
+	if len(os.Args) < 2 {
 		log.Fatal("URL is required")
 	}
-	if *flagPath == "" {
-		log.Fatal("Path is required")
+	if len(os.Args) > 1 && os.Args[1] == "" {
+		log.Fatal("URL is required")
 	}
-	resetFFMPEG()
+	if os.Getenv("APP_ROOT") == "" {
+		log.Fatal("Output ROOT is required")
+	}
+	if os.Getenv("APP_NAME") == "" {
+		log.Fatal("Name is required")
+	}
+	os.MkdirAll(getFullPath(), 0777)
 
-	os.MkdirAll(*flagPath, 0755)
+	resetFFMPEG()
 
 	go func() {
 		for {
 			time.Sleep(5 * time.Second)
-			if ffmpeg.HitExpired() {
-				ffmpeg.Stop()
-				ffmpeg.Wait()
-				resetFFMPEG()
+			if ffmpeg.running {
+				if ffmpeg.HitExpired() {
+					ffmpeg.Stop()
+					ffmpeg.Wait()
+					resetFFMPEG()
+				}
 			}
 		}
 	}()
@@ -60,7 +65,7 @@ func main() {
 		}
 		ffmpeg.Hit()
 		w.Header().Add("Expires", "0")
-		http.FileServer(http.Dir(".")).ServeHTTP(w, r)
+		http.FileServer(http.Dir(getFullPath())).ServeHTTP(w, r)
 	})
 
 	signals.INT(func() {
@@ -70,6 +75,6 @@ func main() {
 		os.Exit(1)
 	})
 
-	log.Fatal(http.ListenAndServe(":9999", nil))
+	log.Fatal(http.ListenAndServe(os.Getenv("APP_BIND"), nil))
 	runtime.Goexit()
 }
