@@ -43,6 +43,7 @@ func (f *FFmpeg) Start() error {
 	f.cmd.Dir = f.path
 	// log.Printf("Starting FFmpeg process: %s", f.cmd.Dir)
 	f.running = true
+	f.cmd.Start()
 	// log.Printf("%v", f.cmd.Start())
 	f.Hit()
 	return errors.New("FFmpeg process started")
