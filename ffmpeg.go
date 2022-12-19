@@ -72,5 +72,5 @@ func (f *FFmpeg) Hit() {
 
 func (f *FFmpeg) HitExpired() bool {
 	// return time.Now().Sub(f.hit).Minutes() > 0
-	return time.Now().Sub(f.hit).Seconds() > 14 && f.running
+	return time.Now().Sub(f.hit).Seconds() > 120 && f.running
 }
