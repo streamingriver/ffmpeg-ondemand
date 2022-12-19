@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"log"
 	"os"
 	"os/exec"
 	"sync"
@@ -11,7 +10,7 @@ import (
 )
 
 func New(url []string, path string) *FFmpeg {
-	cmd := exec.Command("ffmpeg", url...)
+	cmd := exec.Command("/ffmpeg", url...)
 	return &FFmpeg{
 		cmd,
 		&sync.RWMutex{},
@@ -31,7 +30,7 @@ type FFmpeg struct {
 
 func (f *FFmpeg) Start() error {
 	if f.running {
-		log.Printf("running.....")
+		// log.Printf("running.....")
 		return nil
 	}
 
@@ -42,13 +41,19 @@ func (f *FFmpeg) Start() error {
 		Pdeathsig: syscall.SIGKILL,
 	}
 	f.cmd.Dir = f.path
+	// log.Printf("Starting FFmpeg process: %s", f.cmd.Dir)
 	f.running = true
+	// log.Printf("%v", f.cmd.Start())
 	f.Hit()
 	return errors.New("FFmpeg process started")
 }
 
 func (f *FFmpeg) Stop() error {
+	if f.running == false {
+		return nil
+	}
 	f.running = false
+
 	return f.cmd.Process.Signal(syscall.SIGKILL)
 }
 
